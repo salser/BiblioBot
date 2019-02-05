@@ -1,0 +1,24 @@
+{
+  "name": "bibliobothook",
+  "version": "1.0.0",
+  "description": "Hook for dialog flow",
+  "main": "index.js",
+  "scripts": {
+    "test": "testCMD"
+  },
+  "repository": {
+    "type": "git",
+    "url": "Bibliobot"
+  },
+  "keywords": [
+    "bot",
+    "chat",
+    "hook"
+  ],
+  "author": "ToM",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "^4.16.4"
+  }
+}
