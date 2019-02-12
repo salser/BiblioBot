@@ -1,6 +1,6 @@
 'use strict';
 
-const {WebhookClient, Suggestion} = require('dialogflow-fulfillment');
+const { WebhookClient, Suggestion } = require('dialogflow-fulfillment');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const compression = require('compression');
@@ -17,20 +17,34 @@ router.use(bodyParser.urlencoded({ extended: true }));
 router.use(awsServerlessExpressMiddleware.eventContext());
 
 router.post('/', (request, response) => {
-    const agent = new WebhookClient({ request, response });
-    console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
-    console.log('Dialogflow Request body: ' + JSON.stringify(request.body));
- 
+  const agent = new WebhookClient({ request, response });
+  console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
+  console.log('Dialogflow Request body: ' + JSON.stringify(request.body));
 
-  function horarios(agent) {
+
+  function schedules(agent) {
     var biblioteca = agent.parameters.biblioteca;
-    agent.add("Hola, soy bibliobot desde aws y voy a buscar el horario de la bilbioteca " + biblioteca);
+    agent.add("Hola, soy bibliobot y voy a buscar el horario de la bilbioteca " + biblioteca);
   }
 
-    // Run the proper function handler based on the matched Dialogflow intent name
-    let intentMap = new Map();
-    intentMap.set("Horarios bibliotecas", horarios);
-    agent.handleRequest(intentMap);
+  function bookSearch(agent) {
+    var book = agent.parameters.libro;
+    var splitter = JSON.stringify(book).split("'");
+    if (undefined == splitter[1]) {
+      agent.add("Puedes repetir el libro por favor entre comillas sencillas...")
+    } else {
+      agent.add(JSON.stringify(splitter));
+      agent.add("Hola, soy bibliobot y voy a buscar el libro " + splitter[1]);
+    }
+
+  }
+
+
+  // Run the proper function handler based on the matched Dialogflow intent name
+  let intentMap = new Map();
+  intentMap.set("Horarios bibliotecas", schedules);
+  intentMap.set('Busqueda Libros', bookSearch)
+  agent.handleRequest(intentMap);
 });
 
 app.use('/', router);
