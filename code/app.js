@@ -24,7 +24,7 @@ router.post('/', (request, response) => {
 
   function schedules(agent) {
     var biblioteca = agent.parameters.biblioteca;
-    agent.add("Hola Mundogod, soy bibliobot y voy a buscar el horario de la bilbioteca " + biblioteca);
+    agent.add("Hola Mundo19, soy bibliobot y voy a buscar el horario de la bilbioteca " + biblioteca);
   }
 
   function bookSearch(agent) {
