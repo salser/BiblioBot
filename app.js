@@ -24,11 +24,25 @@ router.post('/', (request, response) => {
 
   function schedules(agent) {
     var biblioteca = agent.parameters.biblioteca;
-    agent.add("Hola, soy bibliobot y voy a buscar el horario de la bilbioteca " + biblioteca);
+    agent.add("Hola Mundo9, soy bibliobot y voy a buscar el horario de la bilbioteca " + biblioteca);
   }
 
   function bookSearch(agent) {
+    var book = JSON.stringify(agent.query);
+    agent.add(book);
+    //agent.add(book.includes('el libro'));
+    /* if (book.includes('el libro')) {
+      var splitter = JSON.stringify(book).split(" ");
+      for (var i = 0; i < splitter.length; ++i) {
+        agent.add(splitter[i]);
+      }
+    } else {
+      agent.add('Si vas a preguntar por libros asegurate de preguntar "el libro <libro>"');
+    } */
+  }
+  /*function bookSearch(agent) {
     var book = agent.parameters.libro;
+    agent.add("el libro" + book);
     var splitter = JSON.stringify(book).split("'");
     if (undefined == splitter[1]) {
       agent.add("Puedes repetir el libro por favor entre comillas sencillas...")
@@ -36,8 +50,7 @@ router.post('/', (request, response) => {
       agent.add(JSON.stringify(splitter));
       agent.add("Hola, soy bibliobot y voy a buscar el libro " + splitter[1]);
     }
-
-  }
+  }*/
 
 
   // Run the proper function handler based on the matched Dialogflow intent name
