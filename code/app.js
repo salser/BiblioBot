@@ -24,13 +24,18 @@ router.post('/', (request, response) => {
 
   function schedules(agent) {
     var biblioteca = agent.parameters.biblioteca;
-    agent.add("Hola Mundo19, soy bibliobot y voy a buscar el horario de la bilbioteca " + biblioteca);
+    agent.add("Hola Mundo150, soy bibliobot y voy a buscar el horario de la bilbioteca " + biblioteca);
   }
 
   function bookSearch(agent) {
     var book = agent.query;
-    agent.add(book);
-    //agent.add((book + "").includes('el libro'));
+    agent.add("el libro es " + book);
+    agent.add('EL LIBRO ES: ' + JSON.stringify(book));
+    var splitter = JSON.stringify(book).split("libro");
+    for (var i = 0; i < splitter.length; ++i) {
+      agent.add(splitter[i]);
+    }
+    //agent.add(JSON.stringify(book).includes('el libro'));
     /* if (book.includes('el libro')) {
       var splitter = JSON.stringify(book).split(" ");
       for (var i = 0; i < splitter.length; ++i) {
