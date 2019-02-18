@@ -1,6 +1,7 @@
 'use strict';
 
 const { WebhookClient, Suggestion, Card } = require('dialogflow-fulfillment');
+const { dialogflow } = require('actions-on-google');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const compression = require('compression');
@@ -17,6 +18,8 @@ router.use(bodyParser.json());
 router.use(bodyParser.urlencoded({ extended: true }));
 router.use(awsServerlessExpressMiddleware.eventContext());
 
+const appDialogFlow = dialogflow();
+
 router.post('/', (request, response) => {
   const agent = new WebhookClient({ request, response });
   console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
@@ -30,21 +33,9 @@ router.post('/', (request, response) => {
 
   function bookSearch(agent) {
     var query = agent.query;
-    /* agent.add("el libro es " + query);
-    agent.add('EL LIBRO ES: ' + JSON.stringify(query)); */
     var strQuery = JSON.stringify(query);
-    var queryType = -1;
     if (strQuery.includes('libro')) {
-      queryType = 1;
-    } else if (strQuery.includes('autor')) {
-      queryType = 2;
-    } else if (strQuery.includes('genero') || strQuery.includes('género') || strQuery.includes('tipo')) {
-      queryType = 3;
-    }
-    if (1 === queryType) {
       var splitter = JSON.stringify(query).split("libro")[1].split(",");
-      //agent.add("Hola bibliobot va a buscar el libro " + splitter[0] + "");
-
       agent.add('Bibliobot soy yo,');
       agent.add(new Card({
         title: 'Voy a buscar el libro en segundos vuelvo...',
@@ -53,38 +44,52 @@ router.post('/', (request, response) => {
         buttonText: 'Echa un vistazo a biblored',
         buttonUrl: 'http://catalogo.biblored.gov.co/'
       })
-      )
+      );
     } else {
-      agent.add('Especifica que quieres buscar por ejemplo "Buscar el libro <libro>"')
+      agent.add('Especifica que quieres buscar por ejemplo "Buscar el libro <libro>,"');
     }
+  }
 
-    //agent.add(JSON.stringify(book).includes('el libro'));
-    /* if (book.includes('el libro')) {
-      var splitter = JSON.stringify(book).split(" ");
-      for (var i = 0; i < splitter.length; ++i) {
-        agent.add(splitter[i]);
+  function authorSearch(agent) {
+    var query = agent.query;
+    var strQuery = JSON.stringify(query);
+    if (!strQuery.includes('ToM')) {
+      if (strQuery.includes('autor')) {
+        var splitter = JSON.stringify(query).split("autor")[1].split(",");
+        agent.add('Bibliobot soy yo,');
+        agent.add(new Card({
+          title: 'Voy a buscar el libros con ese autor en segundos vuelvo...',
+          imageUrl: bibloredImgUrl,
+          text: splitter[0] + ' 💁',
+          buttonText: 'Echa un vistazo a biblored',
+          buttonUrl: 'http://catalogo.biblored.gov.co/'
+        })
+        );
+      } else {
+        agent.add('Especifica que quieres buscar por ejemplo "Buscar el autor <autor>,"');
       }
     } else {
-      agent.add('Si vas a preguntar por libros asegurate de preguntar "el libro <libro>"');
-    } */
-  }
-  /*function bookSearch(agent) {
-    var book = agent.parameters.libro;
-    agent.add("el libro" + book);
-    var splitter = JSON.stringify(book).split("'");
-    if (undefined == splitter[1]) {
-      agent.add("Puedes repetir el libro por favor entre comillas sencillas...")
-    } else {
-      agent.add(JSON.stringify(splitter));
-      agent.add("Hola, soy bibliobot y voy a buscar el libro " + splitter[1]);
+
     }
-  }*/
+
+  }
+
+  function search(agent) {
+    agent.add('Que quieres buscar?');
+    agent.add("Escoge...");
+    /* agent.add(new Suggestion('Buscar libro ToM'));
+    agent.add(new Suggestion('Buscar autor ToM'));
+    agent.add(new Suggestion('Buscar género ToM')); */
+    
+  }
 
 
   // Run the proper function handler based on the matched Dialogflow intent name
   let intentMap = new Map();
   intentMap.set("Horarios bibliotecas", schedules);
-  intentMap.set('Busqueda Libros', bookSearch)
+  intentMap.set('Busqueda Libros', bookSearch);
+  intentMap.set('Busqueda Autor', authorSearch);
+  intentMap.set('Busqueda Generico', search);
   agent.handleRequest(intentMap);
 });
 
