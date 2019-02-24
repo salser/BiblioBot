@@ -28,7 +28,7 @@ router.post('/', (request, response) => {
 
   function schedules(agent) {
     var biblioteca = agent.parameters.biblioteca;
-    agent.add("Hola, soy bibliobot y voy a buscar el horario de la bilbioteca " + biblioteca);
+    agent.add("Hola, soy bibliobot y voy a buscar el horario de la bilbioteca " + biblioteca + "desde digitalo");
   }
 
   function bookSearch(agent) {
@@ -96,3 +96,10 @@ router.post('/', (request, response) => {
 app.use('/', router);
 
 module.exports = app;
+
+
+/* var port = process.env.PORT || 3000; */
+app.listen(7011);
+
+console.log('Server started on: ' + 7011);
+
