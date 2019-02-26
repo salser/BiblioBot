@@ -28,78 +28,141 @@ router.post('/', (request, response) => {
 
   function schedules(agent) {
     var biblioteca = agent.parameters.biblioteca;
-    agent.add("Hola, soy bibliobot y voy a buscar el horario de la bilbioteca " + biblioteca + "desde digitalo");
+    agent.add("Hola, soy bibliobot y voy a buscar el horario de la bilbioteca " + biblioteca);
   }
 
   function bookSearch(agent) {
+    var context = agent.context.get('book-search') ? "yes" : "no";
+    agent.add(context);
     var query = agent.query;
     var strQuery = JSON.stringify(query);
     if (strQuery.includes('libro')) {
       var splitter = JSON.stringify(query).split("libro")[1].split(",");
       agent.add('Bibliobot soy yo,');
-      agent.add(new Card({
-        title: 'Voy a buscar el libro en segundos vuelvo...',
-        imageUrl: bibloredImgUrl,
-        text: splitter[0] + ' 💁',
-        buttonText: 'Echa un vistazo a biblored',
-        buttonUrl: 'http://catalogo.biblored.gov.co/'
-      })
+      agent.add(
+        generateCard('Voy a buscar el libro en segundos vuelvo...',
+          bibloredImgUrl,
+          splitter[0] + ' 💁',
+          'Echa un vistazo a biblored',
+          'http://catalogo.biblored.gov.co/')
       );
     } else {
       agent.add('Especifica que quieres buscar por ejemplo "Buscar el libro <libro>,"');
     }
   }
 
+  function specificBookSearch(agent) {
+    var book = agent.parameters.book;
+    agent.add('Bibliobot soy yo,');
+    agent.add(
+      generateCard('Voy a buscar el libro en segundos vuelvo...',
+        bibloredImgUrl,
+        book + ' 💁',
+        'Echa un vistazo a biblored',
+        'http://catalogo.biblored.gov.co/')
+    );
+  }
+
   function authorSearch(agent) {
     var query = agent.query;
     var strQuery = JSON.stringify(query);
-    if (!strQuery.includes('ToM')) {
-      if (strQuery.includes('autor')) {
-        var splitter = JSON.stringify(query).split("autor")[1].split(",");
-        agent.add('Bibliobot soy yo,');
-        agent.add(new Card({
-          title: 'Voy a buscar el libros con ese autor en segundos vuelvo...',
-          imageUrl: bibloredImgUrl,
-          text: splitter[0] + ' 💁',
-          buttonText: 'Echa un vistazo a biblored',
-          buttonUrl: 'http://catalogo.biblored.gov.co/'
-        })
-        );
-      } else {
-        agent.add('Especifica que quieres buscar por ejemplo "Buscar el autor <autor>,"');
-      }
+    if (strQuery.includes('autor')) {
+      var splitter = JSON.stringify(query).split("autor")[1].split(",");
+      agent.add('Bibliobot soy yo,');
+      agent.add(
+        generateCard('Voy a buscar libros con ese autor, en segundos vuelvo...',
+          bibloredImgUrl,
+          splitter[0] + ' 💁',
+          'Echa un vistazo a biblored',
+          'http://catalogo.biblored.gov.co/')
+      );
     } else {
-
+      agent.add('Especifica que quieres buscar por ejemplo "Buscar el autor <autor>,"');
     }
-
   }
 
-  function search(agent) {
-    agent.add('Que quieres buscar?');
-    agent.add("Escoge...");
-    /* agent.add(new Suggestion('Buscar libro ToM'));
-    agent.add(new Suggestion('Buscar autor ToM'));
-    agent.add(new Suggestion('Buscar género ToM')); */
-    
+  function specificAuthSearch(agent) {
+    var author = agent.parameters.author;
+    agent.add('Bibliobot soy yo,');
+    agent.add(
+      generateCard('Voy a buscar libros con el siguiente autor, en segundos vuelvo...',
+        bibloredImgUrl,
+        author + ' 💁',
+        'Echa un vistazo a biblored',
+        'http://catalogo.biblored.gov.co/')
+    );
+  }
+
+  function searchBookGen(agent) {
+    agent.add('¿Cuál Libro?');
+  }
+
+  function searchAuthGen(agent) {
+    agent.add('¿Cuál Autor?');
+  }
+
+  function welcome(agent) {
+    //if (agent.requestSource === agent.TELEGRAM) {
+    agent.add('Escoge una opción...');
+    var x = Math.floor((Math.random() * 2) + 1);
+    switch (x) {
+      case 1:
+        agent.add('Hola, soy blibliobot en que te puedo ayudar?');
+        addQuestions(agent);
+        break;
+      case 2:
+        agent.add('Qué hay de nuevo? Soy bibliobot, alguna consulta el día de hoy?');
+        addQuestions(agent);
+        break;
+    }
   }
 
 
   // Run the proper function handler based on the matched Dialogflow intent name
   let intentMap = new Map();
-  intentMap.set("Horarios bibliotecas", schedules);
+  intentMap.set('Saludo', welcome);
+
+  intentMap.set('Buscar Libro Gen', searchBookGen);
+  intentMap.set('Buscar Libro Guiado', specificBookSearch);
   intentMap.set('Busqueda Libros', bookSearch);
+
+  intentMap.set('Buscar Autor Gen', searchAuthGen);
+  intentMap.set('Buscar Autor Guiado', specificAuthSearch);
   intentMap.set('Busqueda Autor', authorSearch);
-  intentMap.set('Busqueda Generico', search);
+
+  intentMap.set("Horarios bibliotecas", schedules);
+
   agent.handleRequest(intentMap);
 });
+
+function addQuestions(agent) {
+  agent.add(new Suggestion('Búsqueda Libro ToM'));
+  agent.add(new Suggestion('Búsqueda Autor ToM'));
+  agent.add(new Suggestion('Búsqueda Género ToM'));
+}
+
+function generateCard(title, image, text, buttonText, buttonUrl) {
+  return new Card({
+    title: title,
+    imageUrl: image,
+    text: text,
+    buttonText: buttonText,
+    buttonUrl: buttonUrl
+  });
+}
 
 app.use('/', router);
 
 module.exports = app;
 
+var port = 4300;
+app.listen(port);
 
-/* var port = process.env.PORT || 3000; */
-app.listen(7011);
+console.log('Server started on: ' + port);
 
-console.log('Server started on: ' + 7011);
+
+/*
+var
+    port = process.env.PORT || 3000;
+    */
 
