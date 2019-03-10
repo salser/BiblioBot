@@ -1,6 +1,7 @@
 'use strict';
 
 const { WebhookClient, Suggestion, Card } = require('dialogflow-fulfillment');
+const { dialogflow } = require('actions-on-google');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const compression = require('compression');
@@ -17,6 +18,8 @@ router.use(bodyParser.json());
 router.use(bodyParser.urlencoded({ extended: true }));
 router.use(awsServerlessExpressMiddleware.eventContext());
 
+const appDialogFlow = dialogflow();
+
 router.post('/', (request, response) => {
   const agent = new WebhookClient({ request, response });
   console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
@@ -29,65 +32,137 @@ router.post('/', (request, response) => {
   }
 
   function bookSearch(agent) {
+    var context = agent.context.get('book-search') ? "yes" : "no";
+    agent.add(context);
     var query = agent.query;
-    /* agent.add("el libro es " + query);
-    agent.add('EL LIBRO ES: ' + JSON.stringify(query)); */
     var strQuery = JSON.stringify(query);
-    var queryType = -1;
     if (strQuery.includes('libro')) {
-      queryType = 1;
-    } else if (strQuery.includes('autor')) {
-      queryType = 2;
-    } else if (strQuery.includes('genero') || strQuery.includes('género') || strQuery.includes('tipo')) {
-      queryType = 3;
-    }
-    if (1 === queryType) {
       var splitter = JSON.stringify(query).split("libro")[1].split(",");
-      //agent.add("Hola bibliobot va a buscar el libro " + splitter[0] + "");
-
       agent.add('Bibliobot soy yo,');
-      agent.add(new Card({
-        title: 'Voy a buscar el libro en segundos vuelvo...',
-        imageUrl: bibloredImgUrl,
-        text: splitter[0] + ' 💁',
-        buttonText: 'Echa un vistazo a biblored',
-        buttonUrl: 'http://catalogo.biblored.gov.co/'
-      })
-      )
+      agent.add(
+        generateCard('Voy a buscar el libro en segundos vuelvo...',
+          bibloredImgUrl,
+          splitter[0] + ' 💁',
+          'Echa un vistazo a biblored',
+          'http://catalogo.biblored.gov.co/')
+      );
     } else {
-      agent.add('Especifica que quieres buscar por ejemplo "Buscar el libro <libro>"')
+      agent.add('Especifica que quieres buscar por ejemplo "Buscar el libro <libro>,"');
     }
-
-    //agent.add(JSON.stringify(book).includes('el libro'));
-    /* if (book.includes('el libro')) {
-      var splitter = JSON.stringify(book).split(" ");
-      for (var i = 0; i < splitter.length; ++i) {
-        agent.add(splitter[i]);
-      }
-    } else {
-      agent.add('Si vas a preguntar por libros asegurate de preguntar "el libro <libro>"');
-    } */
   }
-  /*function bookSearch(agent) {
-    var book = agent.parameters.libro;
-    agent.add("el libro" + book);
-    var splitter = JSON.stringify(book).split("'");
-    if (undefined == splitter[1]) {
-      agent.add("Puedes repetir el libro por favor entre comillas sencillas...")
+
+  function specificBookSearch(agent) {
+    var book = agent.parameters.book;
+    agent.add('Bibliobot soy yo,');
+    agent.add(
+      generateCard('Voy a buscar el libro en segundos vuelvo...',
+        bibloredImgUrl,
+        book + ' 💁',
+        'Echa un vistazo a biblored',
+        'http://catalogo.biblored.gov.co/')
+    );
+  }
+
+  function authorSearch(agent) {
+    var query = agent.query;
+    var strQuery = JSON.stringify(query);
+    if (strQuery.includes('autor')) {
+      var splitter = JSON.stringify(query).split("autor")[1].split(",");
+      agent.add('Bibliobot soy yo,');
+      agent.add(
+        generateCard('Voy a buscar libros con ese autor, en segundos vuelvo...',
+          bibloredImgUrl,
+          splitter[0] + ' 💁',
+          'Echa un vistazo a biblored',
+          'http://catalogo.biblored.gov.co/')
+      );
     } else {
-      agent.add(JSON.stringify(splitter));
-      agent.add("Hola, soy bibliobot y voy a buscar el libro " + splitter[1]);
+      agent.add('Especifica que quieres buscar por ejemplo "Buscar el autor <autor>,"');
     }
-  }*/
+  }
+
+  function specificAuthSearch(agent) {
+    var author = agent.parameters.author;
+    agent.add('Bibliobot soy yo,');
+    agent.add(
+      generateCard('Voy a buscar libros con el siguiente autor, en segundos vuelvo...',
+        bibloredImgUrl,
+        author + ' 💁',
+        'Echa un vistazo a biblored',
+        'http://catalogo.biblored.gov.co/')
+    );
+  }
+
+  function searchBookGen(agent) {
+    agent.add('¿Cuál Libro?');
+  }
+
+  function searchAuthGen(agent) {
+    agent.add('¿Cuál Autor?');
+  }
+
+  function welcome(agent) {
+    //if (agent.requestSource === agent.TELEGRAM) {
+    agent.add('Escoge una opción...');
+    var x = Math.floor((Math.random() * 2) + 1);
+    switch (x) {
+      case 1:
+        agent.add('Hola, soy blibliobot en que te puedo ayudar?');
+        addQuestions(agent);
+        break;
+      case 2:
+        agent.add('Qué hay de nuevo? Soy bibliobot, alguna consulta el día de hoy?');
+        addQuestions(agent);
+        break;
+    }
+  }
 
 
   // Run the proper function handler based on the matched Dialogflow intent name
   let intentMap = new Map();
+  intentMap.set('Saludo', welcome);
+
+  intentMap.set('Buscar Libro Gen', searchBookGen);
+  intentMap.set('Buscar Libro Guiado', specificBookSearch);
+  intentMap.set('Busqueda Libros', bookSearch);
+
+  intentMap.set('Buscar Autor Gen', searchAuthGen);
+  intentMap.set('Buscar Autor Guiado', specificAuthSearch);
+  intentMap.set('Busqueda Autor', authorSearch);
+
   intentMap.set("Horarios bibliotecas", schedules);
-  intentMap.set('Busqueda Libros', bookSearch)
+
   agent.handleRequest(intentMap);
 });
+
+function addQuestions(agent) {
+  agent.add(new Suggestion('Búsqueda Libro ToM'));
+  agent.add(new Suggestion('Búsqueda Autor ToM'));
+  agent.add(new Suggestion('Búsqueda Género ToM'));
+}
+
+function generateCard(title, image, text, buttonText, buttonUrl) {
+  return new Card({
+    title: title,
+    imageUrl: image,
+    text: text,
+    buttonText: buttonText,
+    buttonUrl: buttonUrl
+  });
+}
 
 app.use('/', router);
 
 module.exports = app;
+
+var port = 4300;
+app.listen(port);
+
+console.log('Server started on: ' + port);
+
+
+/*
+var
+    port = process.env.PORT || 3000;
+    */
+
