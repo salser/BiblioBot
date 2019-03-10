@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "Bibliobot fullfilment that works over AWS Lambda with ExpressJs",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "start": "node index.js"
+  },
   "author": "Henry Salazar",
   "license": "ISC",
   "dependencies": {
