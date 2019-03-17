@@ -16,7 +16,7 @@ router.use(compression());
 router.use(cors());
 router.use(bodyParser.json());
 router.use(bodyParser.urlencoded({ extended: true }));
-router.use(awsServerlessExpressMiddleware.eventContext());
+//router.use(awsServerlessExpressMiddleware.eventContext());
 
 const appDialogFlow = dialogflow();
 
@@ -93,12 +93,21 @@ router.post('/', (request, response) => {
     );
   }
 
+  function specificRequestEvent(agent) {
+    var event = agent.parameters.request;
+    agent.add('request: ' + request);
+  }
+
   function searchBookGen(agent) {
     agent.add('¿Cuál Libro?');
   }
 
   function searchAuthGen(agent) {
     agent.add('¿Cuál Autor?');
+  }
+
+  function requestEventGen(agent) {
+    agent.add('Qué Evento?');
   }
 
   function welcome(agent) {
@@ -130,6 +139,9 @@ router.post('/', (request, response) => {
   intentMap.set('Buscar Autor Guiado', specificAuthSearch);
   intentMap.set('Busqueda Autor', authorSearch);
 
+  intentMap.set('Consulta Eventos Gen', requestEventGen);
+  intentMap.set('Consulta Eventos Guiado', specificRequestEvent);
+
   intentMap.set("Horarios bibliotecas", schedules);
 
   agent.handleRequest(intentMap);
@@ -139,6 +151,7 @@ function addQuestions(agent) {
   agent.add(new Suggestion('Búsqueda Libro ToM'));
   agent.add(new Suggestion('Búsqueda Autor ToM'));
   agent.add(new Suggestion('Búsqueda Género ToM'));
+  agent.add(new Suggestion('Consulta Eventos ToM'));
 }
 
 function generateCard(title, image, text, buttonText, buttonUrl) {
@@ -155,10 +168,10 @@ app.use('/', router);
 
 module.exports = app;
 
-var port = 4300;
+/* var port = 4300;
 app.listen(port);
 
-console.log('Server started on: ' + port);
+console.log('Server started on: ' + port); */
 
 
 /*
