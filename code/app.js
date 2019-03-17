@@ -7,6 +7,7 @@ const cors = require('cors');
 const compression = require('compression');
 const awsServerlessExpressMiddleware = require('aws-serverless-express/middleware');
 
+var unirest = require('unirest');
 var express = require('express');
 const app = express();
 const router = express.Router();
@@ -64,7 +65,6 @@ router.post('/', (request, response) => {
   }
 
   function authorSearch(agent) {
-    var query = agent.query;
     var strQuery = JSON.stringify(query);
     if (strQuery.includes('autor')) {
       var splitter = JSON.stringify(query).split("autor")[1].split(",");
@@ -81,16 +81,46 @@ router.post('/', (request, response) => {
     }
   }
 
-  function specificAuthSearch(agent) {
+  async function specificAuthSearch(agent) {
     var author = agent.parameters.author;
-    agent.add('Bibliobot soy yo,');
+    var result = await consultarLibro(author, agent);
+    var res = JSON.parse(result);
+    res = JSON.parse(res);
+    //console.log(res);
+    var array = res['hits']['hits'];
+    if (array.length <= 0) {
+      agent.add('no se encontraron resultados de ' + author);
+    } else {
+      for (let i = 0; i < array.length; i++) {
+        if (i < 3) {
+          const element = array[i];
+          var book = element['_source'];
+          agent.add('*LIBRO:*' + book['TITULO'] + '\n' +
+             '*AUTOR:*' + book['AUTOR'] + '\n' +
+             '*BIBLIOTECA:*' + book['BIBLIOTECA '] + '\n' +
+             '*COPIAS:*' + book['CANT']
+          );
+        }
+      }
+    }
+
+    /* array.forEach(element => {
+      var book = element['_source'];
+      agent.add('**LIBRO:**' + book['TITULO'] + '\n' //+
+        // '**AUTOR:**' + book['AUTOR'] + '\n' +
+        // '**BIBLIOTECA:**' + book['BIBLIOTECA'] + '\n' +
+        // '**COPIAS:**' + book['CANT']
+      );
+    }); */
+
+    /* agent.add('Bibliobot soy yo,');
     agent.add(
       generateCard('Voy a buscar libros con el siguiente autor, en segundos vuelvo...',
         bibloredImgUrl,
         author + ' 💁',
         'Echa un vistazo a biblored',
         'http://catalogo.biblored.gov.co/')
-    );
+    ); */
   }
 
   function specificRequestEvent(agent) {
@@ -111,6 +141,7 @@ router.post('/', (request, response) => {
   }
 
   function welcome(agent) {
+
     //if (agent.requestSource === agent.TELEGRAM) {
     agent.add('Escoge una opción...');
     var x = Math.floor((Math.random() * 2) + 1);
@@ -161,6 +192,28 @@ function generateCard(title, image, text, buttonText, buttonUrl) {
     text: text,
     buttonText: buttonText,
     buttonUrl: buttonUrl
+  });
+}
+
+function consultarLibro(libro, agent) {
+  console.log("Consultando texto...");
+
+  return new Promise((resolve) => {
+    console.log(libro);
+    console.log("Entrando a promesa....");
+    var url = 'http://157.230.165.149:9200/libros/libro/_search?q=' + libro;
+    /* if(agent){
+        agent.add(url);
+    } */
+    unirest.get(url)
+      //.headers({'Accept': 'application/json', 'Content-Type': 'application/json'})
+      .send()
+      .end(function (response) {
+        //console.log("Envia R:",response['raw_body']);
+        resolve(JSON.stringify(response['raw_body']));
+
+      });
+
   });
 }
 
