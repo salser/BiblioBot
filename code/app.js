@@ -17,7 +17,7 @@ router.use(compression());
 router.use(cors());
 router.use(bodyParser.json());
 router.use(bodyParser.urlencoded({ extended: true }));
-//router.use(awsServerlessExpressMiddleware.eventContext());
+router.use(awsServerlessExpressMiddleware.eventContext());
 
 const appDialogFlow = dialogflow();
 
@@ -157,9 +157,38 @@ router.post('/', (request, response) => {
     }
   }
 
+  async function searchBook(agent) {
+    var book = agent.parameters.libro;
+    agent.add(book);
+    var result = await consultarLibro(book, agent);
+    var res = JSON.parse(result);
+    res = JSON.parse(res);
+    //console.log(res);
+    console.log(res);
+    var array = res['hits']['hits'];
+    if (array.length <= 0) {
+      agent.add('no se encontraron resultados de ' + book);
+    } else {
+      for (let i = 0; i < array.length; i++) {
+        if (i < 3) {
+          const element = array[i];
+          var book = element['_source'];
+          agent.add('*LIBRO:*' + book['TITULO'] + '\n' +
+             '*AUTOR:*' + book['AUTOR'] + '\n' +
+             '*BIBLIOTECA:*' + book['BIBLIOTECA '] + '\n' +
+             '*COPIAS:*' + book['CANT']
+          );
+        }
+      } 
+    }
+  }
+
 
   // Run the proper function handler based on the matched Dialogflow intent name
   let intentMap = new Map();
+
+  intentMap.set("BuscarLibro", searchBook);
+
   intentMap.set('Saludo', welcome);
 
   intentMap.set('Buscar Libro Gen', searchBookGen);
