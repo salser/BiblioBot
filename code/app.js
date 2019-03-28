@@ -7,6 +7,9 @@ const cors = require('cors');
 const compression = require('compression');
 const awsServerlessExpressMiddleware = require('aws-serverless-express/middleware');
 
+const AUTHOR_SEARCH = 1;
+const BOOK_SEARCH = 2;
+const GENERIC_SEARCH = 3;
 var unirest = require('unirest');
 var express = require('express');
 const app = express();
@@ -23,8 +26,9 @@ const appDialogFlow = dialogflow();
 
 router.post('/', (request, response) => {
   const agent = new WebhookClient({ request, response });
-  console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
-  console.log('Dialogflow Request body: ' + JSON.stringify(request.body));
+  //console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
+  console.log('Dialogflow Request body: ' + JSON.stringify(request.body.originalDetectIntentRequest.payload.data.message.chat.first_name));
+  const userName = (request.body.originalDetectIntentRequest.payload.data.message.chat.first_name);
 
 
   function schedules(agent) {
@@ -83,7 +87,7 @@ router.post('/', (request, response) => {
 
   async function specificAuthSearch(agent) {
     var author = agent.parameters.author;
-    var result = await consultarLibro(author, agent);
+    var result = await consultar(author, agent, AUTHOR_SEARCH);
     var res = JSON.parse(result);
     res = JSON.parse(res);
     //console.log(res);
@@ -96,31 +100,13 @@ router.post('/', (request, response) => {
           const element = array[i];
           var book = element['_source'];
           agent.add('*LIBRO:*' + book['TITULO'] + '\n' +
-             '*AUTOR:*' + book['AUTOR'] + '\n' +
-             '*BIBLIOTECA:*' + book['BIBLIOTECA '] + '\n' +
-             '*COPIAS:*' + book['CANT']
+            '*AUTOR:*' + book['AUTOR'] + '\n' +
+            '*BIBLIOTECA:*' + book['BIBLIOTECA '] + '\n' +
+            '*COPIAS:*' + book['CANT']
           );
         }
       }
     }
-
-    /* array.forEach(element => {
-      var book = element['_source'];
-      agent.add('**LIBRO:**' + book['TITULO'] + '\n' //+
-        // '**AUTOR:**' + book['AUTOR'] + '\n' +
-        // '**BIBLIOTECA:**' + book['BIBLIOTECA'] + '\n' +
-        // '**COPIAS:**' + book['CANT']
-      );
-    }); */
-
-    /* agent.add('Bibliobot soy yo,');
-    agent.add(
-      generateCard('Voy a buscar libros con el siguiente autor, en segundos vuelvo...',
-        bibloredImgUrl,
-        author + ' 💁',
-        'Echa un vistazo a biblored',
-        'http://catalogo.biblored.gov.co/')
-    ); */
   }
 
   function specificRequestEvent(agent) {
@@ -147,11 +133,11 @@ router.post('/', (request, response) => {
     var x = Math.floor((Math.random() * 2) + 1);
     switch (x) {
       case 1:
-        agent.add('Hola, soy blibliobot en que te puedo ayudar?');
+        agent.add('Hola ' + userName +', soy blibliobot en que te puedo ayudar?');
         addQuestions(agent);
         break;
       case 2:
-        agent.add('Qué hay de nuevo? Soy bibliobot, alguna consulta el día de hoy?');
+        agent.add('Qué hay de nuevo ' + userName +'? Soy bibliobot, alguna consulta el día de hoy?');
         addQuestions(agent);
         break;
     }
@@ -195,23 +181,33 @@ function generateCard(title, image, text, buttonText, buttonUrl) {
   });
 }
 
-function consultarLibro(libro, agent) {
+function consultar(text, agent, type) {
   console.log("Consultando texto...");
 
   return new Promise((resolve) => {
-    console.log(libro);
+    console.log(text);
     console.log("Entrando a promesa....");
-    var url = 'http://157.230.165.149:9200/libros/libro/_search?q=' + libro;
-    /* if(agent){
-        agent.add(url);
-    } */
+    var url = '';
+    switch (type) {
+      case AUTHOR_SEARCH:
+        agent.add('Buscando Libros por autor: ' + text + '...');
+        url = 'http://157.230.165.149:9200/libros/libro/_search?q=AUTOR:' + text;
+        break;
+      case BOOK_SEARCH:
+        agent.add('Buscando Libros por titulo: ' + text + '...');
+        url = 'http://157.230.165.149:9200/libros/libro/_search?q=TITULO:' + text;
+        break;
+      case GENERIC_SEARCH:
+        agent.add('Buscando Libros: ' + text + '...');
+        url = 'http://157.230.165.149:9200/libros/libro/_search?q:' + text;
+        break;
+    }
+    
     unirest.get(url)
-      //.headers({'Accept': 'application/json', 'Content-Type': 'application/json'})
       .send()
       .end(function (response) {
         //console.log("Envia R:",response['raw_body']);
         resolve(JSON.stringify(response['raw_body']));
-
       });
 
   });
