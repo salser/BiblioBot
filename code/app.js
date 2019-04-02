@@ -10,6 +10,7 @@ const awsServerlessExpressMiddleware = require('aws-serverless-express/middlewar
 const AUTHOR_SEARCH = 1;
 const BOOK_SEARCH = 2;
 const GENERIC_SEARCH = 3;
+const ELASTIC_URL = 'http://157.230.165.149:9200/libros/libro/_search?';
 var unirest = require('unirest');
 var express = require('express');
 const app = express();
@@ -27,104 +28,15 @@ const appDialogFlow = dialogflow();
 router.post('/', (request, response) => {
   const agent = new WebhookClient({ request, response });
   //console.log('Dialogflow Request headers: ' + JSON.stringify(request.headers));
-  console.log('Dialogflow Request body: ' + JSON.stringify(request.body.originalDetectIntentRequest.payload.data.message.chat.first_name));
-  const userName = (request.body.originalDetectIntentRequest.payload.data.message.chat.first_name);
-
-
-  function schedules(agent) {
-    var biblioteca = agent.parameters.biblioteca;
-    agent.add("Hola, soy bibliobot y voy a buscar el horario de la bilbioteca " + biblioteca);
+  //console.log('Dialogflow Request body: ' + JSON.stringify(request.body.originalDetectIntentRequest.payload.data.message.chat.first_name));
+  
+  let userName;
+  if (request.body.originalDetectIntentRequest.payload.data != undefined) {
+    userName = (request.body.originalDetectIntentRequest.payload.data.message.chat.first_name);
+  } else {
+    userName = '';
   }
-
-  function bookSearch(agent) {
-    var context = agent.context.get('book-search') ? "yes" : "no";
-    agent.add(context);
-    var query = agent.query;
-    var strQuery = JSON.stringify(query);
-    if (strQuery.includes('libro')) {
-      var splitter = JSON.stringify(query).split("libro")[1].split(",");
-      agent.add('Bibliobot soy yo,');
-      agent.add(
-        generateCard('Voy a buscar el libro en segundos vuelvo...',
-          bibloredImgUrl,
-          splitter[0] + ' 💁',
-          'Echa un vistazo a biblored',
-          'http://catalogo.biblored.gov.co/')
-      );
-    } else {
-      agent.add('Especifica que quieres buscar por ejemplo "Buscar el libro <libro>,"');
-    }
-  }
-
-  function specificBookSearch(agent) {
-    var book = agent.parameters.book;
-    agent.add('Bibliobot soy yo,');
-    agent.add(
-      generateCard('Voy a buscar el libro en segundos vuelvo...',
-        bibloredImgUrl,
-        book + ' 💁',
-        'Echa un vistazo a biblored',
-        'http://catalogo.biblored.gov.co/')
-    );
-  }
-
-  function authorSearch(agent) {
-    var strQuery = JSON.stringify(query);
-    if (strQuery.includes('autor')) {
-      var splitter = JSON.stringify(query).split("autor")[1].split(",");
-      agent.add('Bibliobot soy yo,');
-      agent.add(
-        generateCard('Voy a buscar libros con ese autor, en segundos vuelvo...',
-          bibloredImgUrl,
-          splitter[0] + ' 💁',
-          'Echa un vistazo a biblored',
-          'http://catalogo.biblored.gov.co/')
-      );
-    } else {
-      agent.add('Especifica que quieres buscar por ejemplo "Buscar el autor <autor>,"');
-    }
-  }
-
-  async function specificAuthSearch(agent) {
-    var author = agent.parameters.author;
-    var result = await consultar(author, agent, AUTHOR_SEARCH);
-    var res = JSON.parse(result);
-    res = JSON.parse(res);
-    //console.log(res);
-    var array = res['hits']['hits'];
-    if (array.length <= 0) {
-      agent.add('no se encontraron resultados de ' + author);
-    } else {
-      for (let i = 0; i < array.length; i++) {
-        if (i < 3) {
-          const element = array[i];
-          var book = element['_source'];
-          agent.add('*LIBRO:*' + book['TITULO'] + '\n' +
-            '*AUTOR:*' + book['AUTOR'] + '\n' +
-            '*BIBLIOTECA:*' + book['BIBLIOTECA '] + '\n' +
-            '*COPIAS:*' + book['CANT']
-          );
-        }
-      }
-    }
-  }
-
-  function specificRequestEvent(agent) {
-    var event = agent.parameters.request;
-    agent.add('request: ' + request);
-  }
-
-  function searchBookGen(agent) {
-    agent.add('¿Cuál Libro?');
-  }
-
-  function searchAuthGen(agent) {
-    agent.add('¿Cuál Autor?');
-  }
-
-  function requestEventGen(agent) {
-    agent.add('Qué Evento?');
-  }
+  
 
   function welcome(agent) {
 
@@ -143,10 +55,15 @@ router.post('/', (request, response) => {
     }
   }
 
+  function schedules(agent) {
+    var biblioteca = agent.parameters.biblioteca;
+    agent.add("Hola, soy bibliobot y voy a buscar el horario de la bilbioteca " + biblioteca);
+  }
+
   async function searchBook(agent) {
     var book = agent.parameters.libro;
-    agent.add(book);
-    var result = await consultarLibro(book, agent);
+    //agent.add(book);
+    var result = await consultar(book, agent, BOOK_SEARCH);
     var res = JSON.parse(result);
     res = JSON.parse(res);
     //console.log(res);
@@ -169,24 +86,41 @@ router.post('/', (request, response) => {
     }
   }
 
+  async function searchAuthor(agent) {
+    var author = agent.parameters.autor;
+    //agent.add(autor);
+    var result = await consultar(author, agent, AUTHOR_SEARCH);
+    var res = JSON.parse(result);
+    res = JSON.parse(res);
+    //console.log(res);
+    console.log(res);
+    var array = res['hits']['hits'];
+    if (array.length <= 0) {
+      agent.add('no se encontraron resultados de ' + author);
+    } else {
+      for (let i = 0; i < array.length; i++) {
+        if (i < 3) {
+          const element = array[i];
+          var book = element['_source'];
+          agent.add('*LIBRO:*' + book['TITULO'] + '\n' +
+             '*AUTOR:*' + book['AUTOR'] + '\n' +
+             '*BIBLIOTECA:*' + book['BIBLIOTECA '] + '\n' +
+             '*COPIAS:*' + book['CANT']
+          );
+        }
+      } 
+    }
+  }
+
+
+
 
   // Run the proper function handler based on the matched Dialogflow intent name
   let intentMap = new Map();
 
   intentMap.set("BuscarLibro", searchBook);
-
-  intentMap.set('Saludo', welcome);
-
-  intentMap.set('Buscar Libro Gen', searchBookGen);
-  intentMap.set('Buscar Libro Guiado', specificBookSearch);
-  intentMap.set('Busqueda Libros', bookSearch);
-
-  intentMap.set('Buscar Autor Gen', searchAuthGen);
-  intentMap.set('Buscar Autor Guiado', specificAuthSearch);
-  intentMap.set('Busqueda Autor', authorSearch);
-
-  intentMap.set('Consulta Eventos Gen', requestEventGen);
-  intentMap.set('Consulta Eventos Guiado', specificRequestEvent);
+  intentMap.set("BuscarAutor", searchAuthor);
+  intentMap.set('Default Welcome Intent', welcome);
 
   intentMap.set("Horarios bibliotecas", schedules);
 
@@ -194,11 +128,12 @@ router.post('/', (request, response) => {
 });
 
 function addQuestions(agent) {
-  agent.add(new Suggestion('Búsqueda Libro ToM'));
-  agent.add(new Suggestion('Búsqueda Autor ToM'));
-  agent.add(new Suggestion('Búsqueda Género ToM'));
-  agent.add(new Suggestion('Consulta Eventos ToM'));
+  agent.add(new Suggestion('Buscar libro'));
+  agent.add(new Suggestion('Buscar Autor'));
+  agent.add(new Suggestion('Buscar Género'));
+  //agent.add(new Suggestion('Consulta Eventos ToM'));
 }
+
 
 function generateCard(title, image, text, buttonText, buttonUrl) {
   return new Card({
@@ -211,7 +146,7 @@ function generateCard(title, image, text, buttonText, buttonUrl) {
 }
 
 function consultar(text, agent, type) {
-  console.log("Consultando texto...");
+  console.log("Consultando...");
 
   return new Promise((resolve) => {
     console.log(text);
@@ -220,15 +155,15 @@ function consultar(text, agent, type) {
     switch (type) {
       case AUTHOR_SEARCH:
         agent.add('Buscando Libros por autor: ' + text + '...');
-        url = 'http://157.230.165.149:9200/libros/libro/_search?q=AUTOR:' + text;
+        url = ELASTIC_URL + 'q=AUTOR:' + text;
         break;
       case BOOK_SEARCH:
         agent.add('Buscando Libros por titulo: ' + text + '...');
-        url = 'http://157.230.165.149:9200/libros/libro/_search?q=TITULO:' + text;
+        url = ELASTIC_URL + 'q=TITULO:' + text;
         break;
       case GENERIC_SEARCH:
         agent.add('Buscando Libros: ' + text + '...');
-        url = 'http://157.230.165.149:9200/libros/libro/_search?q:' + text;
+        url = ELASTIC_URL + 'q:' + text;
         break;
     }
     
