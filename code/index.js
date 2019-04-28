@@ -7,11 +7,11 @@ const server = awsServerlessExpress.createServer(app);
 exports.handler = (event, context) => { awsServerlessExpress.proxy(server, event, context); };
 
 
-/**
- * Get port from environment and store in Express.
- */
+// /**
+//  * Get port from environment and store in Express.
+//  */
 
-// var port = normalizePort(process.env.PORT || '8889');
+// var port = normalizePort(process.env.PORT || '8085');
 // app.set('port', port);
 
 // /**
