@@ -22,8 +22,8 @@ exports.handler = (event, context) => { awsServerlessExpress.proxy(server, event
 //  // var hskey = fs.readFileSync('/etc/nginx/ssl/bibliobot.key');
 //  // var hscert = fs.readFileSync('/etc/nginx/ssl/bibliobot.cer')
 //  // var options = {
-//  //     key: hskey,
-//  //     cert: hscert
+//  //1     key: hskey,
+//  // 1    cert: hscert
 //  // };
 
 //  // var credentials = {key: hskey, cert: hscert};

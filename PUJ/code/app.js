@@ -1,5 +1,3 @@
-
-
 'use strict';
 
 const { WebhookClient, Suggestion, Card } = require('dialogflow-fulfillment');
@@ -14,112 +12,15 @@ const fs = require('fs');
 const readline = require('readline');
 const { google } = require('googleapis');
 
-function searchInCalendarGoogle(agent) {
-    // Load client secrets from a local file.
-    fs.readFile('credentials.json', (err, content) => {
-        if (err) return console.log('Error loading client secret file:', err);
-        // Authorize a client with credentials, then call the Google Calendar API.
-        authorize(JSON.parse(content), listEvents, agent);
-    });
-}
-
-// If modifying these scopes, delete token.json.
-const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
-// The file token.json stores the user's access and refresh tokens, and is
-// created automatically when the authorization flow completes for the first
-// time.
-const TOKEN_PATH = 'token.json';
-
-
-
-// FUNCTIONS
-
-/**
- * Create an OAuth2 client with the given credentials, and then execute the
- * given callback function.
- * @param {Object} credentials The authorization client credentials.
- * @param {function} callback The callback to call with the authorized client.
- */
-function authorize(credentials, callback, agent) {
-    const { client_secret, client_id, redirect_uris } = credentials.installed;
-    const oAuth2Client = new google.auth.OAuth2(
-        client_id, client_secret, redirect_uris[0]);
-
-    // Check if we have previously stored a token.
-    fs.readFile(TOKEN_PATH, (err, token) => {
-        if (err) return getAccessToken(oAuth2Client, callback, agent);
-        oAuth2Client.setCredentials(JSON.parse(token));
-        callback(oAuth2Client, agent);
-    });
-}
-
-/**
- * Get and store new token after prompting for user authorization, and then
- * execute the given callback with the authorized OAuth2 client.
- * @param {google.auth.OAuth2} oAuth2Client The OAuth2 client to get token for.
- * @param {getEventsCallback} callback The callback for the authorized client.
- */
-function getAccessToken(oAuth2Client, callback, agent) {
-    const authUrl = oAuth2Client.generateAuthUrl({
-        access_type: 'offline',
-        scope: SCOPES,
-    });
-    console.log('Authorize this app by visiting this url:', authUrl);
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
-    rl.question('Enter the code from that page here: ', (code) => {
-        rl.close();
-        oAuth2Client.getToken(code, (err, token) => {
-            if (err) return console.error('Error retrieving access token', err);
-            oAuth2Client.setCredentials(token);
-            // Store the token to disk for later program executions
-            fs.writeFile(TOKEN_PATH, JSON.stringify(token), (err) => {
-                if (err) return console.error(err);
-                console.log('Token stored to', TOKEN_PATH);
-            });
-            callback(oAuth2Client), agent;
-        });
-    });
-}
-
-/**
- * Lists the next 10 events on the user's primary calendar.
- * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
- */
-function listEvents(auth, agent) {
-    const calendar = google.calendar({ version: 'v3', auth });
-    calendar.events.list({
-        calendarId: 'primary',
-        timeMin: (new Date()).toISOString(),
-        maxResults: 10,
-        singleEvents: true,
-        orderBy: 'startTime',
-    }, (err, res) => {
-        if (err) return console.log('The API returned an error: ' + err);
-        const events = res.data.items;
-        if (events.length) {
-            agent.add('Upcoming 10 events:');
-            events.map((event, i) => {
-                const start = event.start.dateTime || event.start.date;
-                agent.add(`${start} - ${event.summary}`);
-            });
-        } else {
-            agent.add('No upcoming events found.');
-        }
-    });
-}
-
-/** END GOOGLE CALENDAR */
-
 
 const AUTHOR_SEARCH = 1;
 const BOOK_SEARCH = 2;
 const GENERIC_SEARCH = 3;
 const LIBRARY_SEARCH = 4;
+const CALENDAR_SEARCH = 5;
 const ELASTIC_URL = 'http://157.230.165.149:9200';
 const SEARCH_PATH = '/javerianalibros/javerianalibro/_search?';
+const CALENDAR_PATH = '/calendarioprueba5/_search?';
 var unirest = require('unirest');
 var express = require('express');
 const app = express();
@@ -140,11 +41,11 @@ router.post('/', (request, response) => {
     //console.log('Dialogflow Request body: ' + JSON.stringify(request.body.originalDetectIntentRequest.payload.data.message.chat.first_name));
 
     let userName;
-    if (request.body.originalDetectIntentRequest.payload.data != undefined) {
+    /* if (request.body.originalDetectIntentRequest.payload.data != undefined) {
         userName = (request.body.originalDetectIntentRequest.payload.data.message.chat.first_name);
     } else {
         userName = '';
-    }
+    } */
 
 
     function welcome(agent) {
@@ -153,11 +54,11 @@ router.post('/', (request, response) => {
         var x = Math.floor((Math.random() * 2) + 1);
         switch (x) {
             case 1:
-                agent.add('Hola ' + userName + ', soy blibliobot-puj en que te puedo ayudar?');
+                agent.add('Hola ' /* + userName */ + ', soy blibliobot-puj en que te puedo ayudar?');
                 addQuestions(agent);
                 break;
             case 2:
-                agent.add('Qué hay de nuevo ' + userName + '? Soy bibliobot-puj, alguna consulta el día de hoy?');
+                agent.add('Qué hay de nuevo ' /* + userName */ + '? Soy bibliobot-puj, alguna consulta el día de hoy?');
                 addQuestions(agent);
                 break;
         }
@@ -166,7 +67,7 @@ router.post('/', (request, response) => {
     async function searchBook(agent) {
         var book = agent.parameters.libro;
         //agent.add(book);
-        var result = await consultar(book, agent, BOOK_SEARCH);
+        var result = await consultar(book, agent, BOOK_SEARCH, "");
         var res = JSON.parse(result);
         res = JSON.parse(res);
         var array = res['hits']['hits'];
@@ -186,7 +87,7 @@ router.post('/', (request, response) => {
     async function searchAuthor(agent) {
         var author = agent.parameters.autor;
         //agent.add(autor);
-        var result = await consultar(author, agent, AUTHOR_SEARCH);
+        var result = await consultar(author, agent, AUTHOR_SEARCH, "");
         var res = JSON.parse(result);
         res = JSON.parse(res);
         var array = res['hits']['hits'];
@@ -203,9 +104,46 @@ router.post('/', (request, response) => {
         }
     }
 
-    function searchCalendar(agent) {
+    async function searchCalendar(agent) {
         agent.add('searching in calendar...');
-        searchInCalendarGoogle(agent);
+        var date = agent.parameters.fecha;
+        var dateObj = new Date(date);
+        var strDate = dateObj.getFullYear() + "-" + (dateObj.getMonth() + 1) + "-" + dateObj.getDate();
+        var hour = agent.parameters.hora;
+        if (hour) {
+            console.log(hour);
+            var obj = new Date(hour);
+            //var formattedNumber = ("0" + myNumber).slice(-2);
+            var txtHR = ("0" + (obj.getHours() - 5)).slice(-2) + '-' + ("0" + obj.getMinutes()).slice(-2) + '-' + ("0" + obj.getSeconds()).slice(-2);
+            strDate += " " + txtHR;
+        }
+        var type = "";
+        if (agent.parameters.evento) {
+            type = agent.parameters.evento;
+        }
+        agent.add(strDate);
+        //ADD 
+        console.log(strDate);
+        var result = await consultar(strDate, agent, CALENDAR_SEARCH, type);
+        var res = JSON.parse(result);
+        res = JSON.parse(res);
+        console.log(res);
+        if (res['hits']) {
+            var array = res['hits']['hits'];
+            if (array.length <= 0) {
+                agent.add('no se encontraron resultados en la fecha ' + strDate);
+            } else {
+                for (let i = 0; i < array.length; i++) {
+                    if (i < 3) {
+                        const element = array[i];
+                        var event = element['_source'];
+                        addEvent2Agent(agent, event);
+                    }
+                }
+            }
+        } else {
+            agent.add('no se encontraron resultados en la fecha ' + strDate);
+        }
     }
 
     // Run the proper function handler based on the matched Dialogflow intent name
@@ -219,8 +157,57 @@ router.post('/', (request, response) => {
     agent.handleRequest(intentMap);
 });
 
+function addEvent2Agent(agent, event) {
+    var des = '',
+        site = '',
+        date = '',
+        resume = '',
+        status = '';
+    if (event['descripcion']) {
+        var replaceStr = '*DESCRIPCIÓN:* ' + event['descripcion']
+            .replace(/<br><br>/g, '\n')
+            .replace(/<br>/g, '\n')
+            .replace(/<br>/g, '')
+            .replace(/\"/g, '')
+            .replace(/<a/g, '')
+            .replace(/href=/g, '')
+            .replace(/id=(.*?)>aquí/g, '')
+            .replace(/<(.*?)>/g, '')
+            .replace(/target=_blank>aquí/g, '')
+            .replace(/&nbsp;/g, '')
+            .replace(/>aquí/g, '');
+        des = replaceStr + '\n';
+    }
+    if (event['lugar']) {
+        site = '*LUGAR:* ' + event['lugar'] + '\n';
+    }
+    if (event['inicio']) {
+        date = '*FECHA:* ' + event['inicio'] + '\n';
+    }
+    if (event['resumen']) {
+        resume = '*RESUMEN:* ' + event['resumen'] + '\n';
+    }
+    if (event['status']) {
+        status = '*ESTADO:* ' + event['status'] + '';
+    }
+    agent.add(
+        date +
+        site +
+        des +
+        resume +
+        status
+    );
+}
+
 function addBook2Agent(agent, book) {
-    var libro = '', autor = '', adi = '', cop = '', cat = '', ubi = '', cod = '', ed = '';
+    var libro = '',
+        autor = '',
+        adi = '',
+        cop = '',
+        cat = '',
+        ubi = '',
+        cod = '',
+        ed = '';
     if (book['LIBRO']) {
         libro = '*LIBRO:* ' + book['LIBRO'] + '\n';
     }
@@ -263,7 +250,7 @@ function addBook2Agent(agent, book) {
 function addQuestions(agent) {
     agent.add(new Suggestion('Buscar libro'));
     agent.add(new Suggestion('Buscar Autor'));
-    //agent.add(new Suggestion('Consulta Eventos ToM'));
+    agent.add(new Suggestion('Consulta Eventos ToM'));
 }
 
 
@@ -277,9 +264,10 @@ function generateCard(title, image, text, buttonText, buttonUrl) {
     });
 }
 
-function consultar(text, agent, type) {
+function consultar(text, agent, type, event) {
 
     return new Promise((resolve) => {
+        console.log('in promise')
         var url = '';
         switch (type) {
             case AUTHOR_SEARCH:
@@ -294,12 +282,21 @@ function consultar(text, agent, type) {
                 agent.add('Buscando Libros: ' + text + '...');
                 url = ELASTIC_URL + SEARCH_PATH + 'q:' + text;
                 break;
+            case CALENDAR_SEARCH:
+                if (event != "") {
+                    agent.add('Buscando eventos: ' + text + ' y evento ' + event + '...');
+                    url = ELASTIC_URL + CALENDAR_PATH + 'q=resumen:' + event + 'inicio:' + text;
+                } else {
+                    agent.add('Buscando eventos: ' + text + '...');
+                    url = ELASTIC_URL + CALENDAR_PATH + 'q=inicio:' + text;
+                }
+                break;
 
         }
 
         unirest.get(url)
             .send()
-            .end(function (response) {
+            .end(function(response) {
                 resolve(JSON.stringify(response['raw_body']));
             });
 
@@ -320,4 +317,3 @@ console.log('Server started on: ' + port); */
 var
     port = process.env.PORT || 3000;
     */
-
