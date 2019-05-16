@@ -75,7 +75,7 @@ router.post('/', (request, response) => {
             agent.add('no se encontraron resultados de ' + book);
         } else {
             for (let i = 0; i < array.length; i++) {
-                if (i < 5) {
+                if (i < 3) {
                     const element = array[i];
                     var book = element['_source'];
                     addBook2Agent(agent, book);
@@ -95,7 +95,7 @@ router.post('/', (request, response) => {
             agent.add('no se encontraron resultados de ' + author);
         } else {
             for (let i = 0; i < array.length; i++) {
-                if (i < 5) {
+                if (i < 3) {
                     const element = array[i];
                     var book = element['_source'];
                     addBook2Agent(agent, book);
@@ -105,29 +105,38 @@ router.post('/', (request, response) => {
     }
 
     async function searchCalendar(agent) {
-        agent.add('searching in calendar...');
         var date = agent.parameters.fecha;
         var dateObj = new Date(date);
-        var strDate = dateObj.getFullYear() + "-" + (dateObj.getMonth() + 1) + "-" + dateObj.getDate();
+        var yearN = (dateObj.getFullYear());
+        var year = (yearN + '').length == 1 ? '0' + '' + yearN : yearN;
+        var mon = (dateObj.getMonth() + 1);
+        var month = (mon + '').length == 1 ? '0' + '' + mon : mon;
+        var dia = (dateObj.getDate());
+        var day = (dia + '').length == 1 ? '0' + '' + dia : dia;
+        var strDate = year + "-" + month + "-" + day;
         var hour = agent.parameters.hora;
         if (hour) {
-            console.log(hour);
+            //console.log(hour);
             var obj = new Date(hour);
             //var formattedNumber = ("0" + myNumber).slice(-2);
+            var hourN = (obj.getHours() - 5);
+            var horas = (hourN + '').length == 1 ? '0' + '' + hourN : hourN;
+            var min = (obj.getMinutes());
+            var minutes = (min + '').length == 1 ? '0' + '' + min : min;
+            var sec = (obj.getSeconds());
+            var seconds = (sec + '').length == 1 ? '0' + '' + sec : sec;
             var txtHR = ("0" + (obj.getHours() - 5)).slice(-2) + '-' + ("0" + obj.getMinutes()).slice(-2) + '-' + ("0" + obj.getSeconds()).slice(-2);
-            strDate += " " + txtHR;
+            strDate += "_" + txtHR;
         }
         var type = "";
         if (agent.parameters.evento) {
             type = agent.parameters.evento;
         }
-        agent.add(strDate);
+
         //ADD 
-        console.log(strDate);
         var result = await consultar(strDate, agent, CALENDAR_SEARCH, type);
         var res = JSON.parse(result);
         res = JSON.parse(res);
-        console.log(res);
         if (res['hits']) {
             var array = res['hits']['hits'];
             if (array.length <= 0) {
