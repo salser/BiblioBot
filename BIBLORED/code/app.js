@@ -11,6 +11,7 @@ const AUTHOR_SEARCH = 1;
 const BOOK_SEARCH = 2;
 const GENERIC_SEARCH = 3;
 const LIBRARY_SEARCH = 4;
+const BOOK_SEARCH_URL = '/librosbiblored/_search?';
 const ELASTIC_URL = 'http://157.230.165.149:9200';
 var unirest = require('unirest');
 var express = require('express');
@@ -32,11 +33,11 @@ router.post('/', (request, response) => {
     //console.log('Dialogflow Request body: ' + JSON.stringify(request.body.originalDetectIntentRequest.payload.data.message.chat.first_name));
 
     let userName;
-    if (request.body.originalDetectIntentRequest.payload.data != undefined) {
+    /* if (request.body.originalDetectIntentRequest.payload.data != undefined) {
         userName = (request.body.originalDetectIntentRequest.payload.data.message.chat.first_name);
     } else {
         userName = '';
-    }
+    } */
 
 
     function welcome(agent) {
@@ -45,11 +46,11 @@ router.post('/', (request, response) => {
         var x = Math.floor((Math.random() * 2) + 1);
         switch (x) {
             case 1:
-                agent.add('Hola ' + userName + ', soy blibliobot en que te puedo ayudar?');
+                agent.add('Hola ' /* + userName */ + ', soy blibliobot en que te puedo ayudar?');
                 addQuestions(agent);
                 break;
             case 2:
-                agent.add('Qué hay de nuevo ' + userName + '? Soy bibliobot, alguna consulta el día de hoy?');
+                agent.add('Qué hay de nuevo ' /* + userName */ + '? Soy bibliobot, alguna consulta el día de hoy?');
                 addQuestions(agent);
                 break;
         }
@@ -77,10 +78,10 @@ router.post('/', (request, response) => {
                         '\tJUE: ' + lib['jueves'] + '\n' +
                         '\tVIE: ' + lib['viernes'] + '\n' +
                         '\tSAB: ' + lib['sabado'] + '\n' +
-                        '\tDOM: ' + lib['domingo'] + '\n' + 
-                        '*DIRECCIÒN:* ' + lib['DIRECCION'] + '\n' + 
+                        '\tDOM: ' + lib['domingo'] + '\n' +
+                        '*DIRECCIÒN:* ' + lib['DIRECCION'] + '\n' +
                         '*ZONA: *' + lib['ZONA'] + '\n' +
-                        '*LOCALIDAD: *' + lib['LOCALIDAD'] + '\n' + 
+                        '*LOCALIDAD: *' + lib['LOCALIDAD'] + '\n' +
                         '*TELÈFONO:* ' + lib['TEL']
                     );
                 }
@@ -104,11 +105,7 @@ router.post('/', (request, response) => {
                 if (i < 3) {
                     const element = array[i];
                     var book = element['_source'];
-                    agent.add('*LIBRO:*' + book['TITULO'] + '\n' +
-                        '*AUTOR:*' + book['AUTOR'] + '\n' +
-                        '*BIBLIOTECA:*' + book['BIBLIOTECA '] + '\n' +
-                        '*COPIAS:*' + book['CANT']
-                    );
+                    addBook2Agent(book, agent);
                 }
             }
         }
@@ -130,11 +127,7 @@ router.post('/', (request, response) => {
                 if (i < 3) {
                     const element = array[i];
                     var book = element['_source'];
-                    agent.add('*LIBRO:*' + book['TITULO'] + '\n' +
-                        '*AUTOR:*' + book['AUTOR'] + '\n' +
-                        '*BIBLIOTECA:*' + book['BIBLIOTECA '] + '\n' +
-                        '*COPIAS:*' + book['CANT']
-                    );
+                    addBook2Agent(book, agent);
                 }
             }
         }
@@ -159,10 +152,72 @@ router.post('/', (request, response) => {
     agent.handleRequest(intentMap);
 });
 
+function addBook2Agent(book, agent) {
+    var ed, isbn, desc, aut, barcode, desc2, cat, matType, price, library, title;
+    console.log(book);
+    if (book['Publisher']) {
+        ed = '*EDITOR:* ' + book['Publisher'] + '\n';
+    }
+    console.log(ed);
+    if (book['ISBN']) {
+        isbn = '*ISBN:* ' + book['ISBN'] + '\n';
+    }
+    console.log(isbn);
+    if (book['Description']) {
+        desc = '*DESCRIPCIÓN:* ' + book['Descripcion'] + '\n';
+    }
+    console.log(desc);
+    if (book['Author']) {
+        aut = '*AUTOR:* ' + book['Author'] + '\n';
+    }
+    console.log(aut);
+    if (book['Barcode']) {
+        barcode = '*CÓDIGO DE BARRAS:* ' + book['Barcode'];
+    }
+    console.log(barcode);
+    if (book['Desc8']) {
+        desc2 = '*ADICIONAL:* ' + book['Desc8'] + '\n';
+    }
+    console.log(desc2);
+    if (book['Sec Call No Desc']) {
+        cat = '*GÉNERO:* ' + book['Sec Call No Desc'] + '\n';
+    }
+    console.log(cat);
+    if (book['Material Type Desc']) {
+        matType = '*TIPO:* ' + book['Material Type Desc'] + '\n';
+    }
+    console.log(matType);
+    if (book['ItemPrice']) {
+        price = '*PRECIO:* ' + book['ItemPrice'] + '\n';
+    }
+    console.log(price);
+    if (book['Current Sub Library Desc']) {
+        library = '*BIBLIOTECA:* ' + book['Current Sub Library Desc'] + '\n';
+    }
+    console.log(library);
+    if (book['\\ufeffTitle']) {
+        title = '*TÍTULO:* ' + book['\\ufeffTitle'] + '\n';
+    }
+    console.log(title);
+    agent.add(
+        title +
+        aut +
+        ed +
+        desc +
+        desc2 +
+        library +
+        isbn +
+        price +
+        cat +
+        matType +
+        barcode
+    );
+}
+
 function addQuestions(agent) {
     agent.add(new Suggestion('Buscar libro'));
     agent.add(new Suggestion('Buscar Autor'));
-    agent.add(new Suggestion('Buscar Género'));
+    //agent.add(new Suggestion('Buscar Género'));
     //agent.add(new Suggestion('Consulta Eventos ToM'));
 }
 
@@ -187,15 +242,15 @@ function consultar(text, agent, type) {
         switch (type) {
             case AUTHOR_SEARCH:
                 agent.add('Buscando Libros por autor: ' + text + '...');
-                url = ELASTIC_URL + '/libros/libro/_search?' + 'q=AUTOR:' + text;
+                url = ELASTIC_URL + BOOK_SEARCH_URL + 'q=Author:' + text;
                 break;
             case BOOK_SEARCH:
                 agent.add('Buscando Libros por titulo: ' + text + '...');
-                url = ELASTIC_URL + '/libros/libro/_search?' + 'q=TITULO:' + text;
+                url = ELASTIC_URL + BOOK_SEARCH_URL + 'q=\\ufeffTitle:' + text;
                 break;
             case GENERIC_SEARCH:
                 agent.add('Buscando Libros: ' + text + '...');
-                url = ELASTIC_URL + '/libros/libro/_search?' + 'q:' + text;
+                url = ELASTIC_URL + BOOK_SEARCH_URL + 'q:' + text;
                 break;
             case LIBRARY_SEARCH:
                 url = ELASTIC_URL + '/bibliotecasbiblored/biblioteca/_search?q=' + text;
@@ -204,7 +259,7 @@ function consultar(text, agent, type) {
 
         unirest.get(url)
             .send()
-            .end(function (response) {
+            .end(function(response) {
                 //console.log("Envia R:",response['raw_body']);
                 resolve(JSON.stringify(response['raw_body']));
             });
@@ -226,4 +281,3 @@ console.log('Server started on: ' + port); */
 var
     port = process.env.PORT || 3000;
     */
-

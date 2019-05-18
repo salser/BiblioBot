@@ -1,7 +1,7 @@
 clear
 rm -rf codelinux-puj.zip
 zip -r codelinux-puj.zip node_modules app.js index.js package.json package-lock.json
-rm -rf /home/hsalazar/TOM/s3files/codelinux.zip
+rm -rf /home/hsalazar/TOM/s3files/codelinux-puj.zip
 mv codelinux-puj.zip /home/hsalazar/TOM/s3files
 cd /home/hsalazar/TOM/s3files
 /usr/local/bin/aws s3 sync . s3://bibliobot-bucket/
