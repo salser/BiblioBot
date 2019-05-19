@@ -4,10 +4,10 @@ Proyecto de grado de estudiantes de ingenieria de sistemas de la Pontificia Univ
 
 ## Integrantes
 
-Henry Salazar
-Camila Beltran
-Camila Villarreal
-Sebastian Barreto
+* Henry Salazar
+* Camila Beltran
+* Camila Villarreal
+* Sebastian Barreto
 
 
 ## Codigo:
