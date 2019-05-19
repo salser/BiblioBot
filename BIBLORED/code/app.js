@@ -11,6 +11,8 @@ const AUTHOR_SEARCH = 1;
 const BOOK_SEARCH = 2;
 const GENERIC_SEARCH = 3;
 const LIBRARY_SEARCH = 4;
+const GENRE_SEARCH = 5;
+const CALENDAR_SEARCH = 6;
 const BOOK_SEARCH_URL = '/librosbiblored/_search?';
 const ELASTIC_URL = 'http://157.230.165.149:9200';
 var unirest = require('unirest');
@@ -58,7 +60,7 @@ router.post('/', (request, response) => {
 
     async function schedules(agent) {
         var biblioteca = agent.parameters.biblioteca;
-        var result = await consultar(biblioteca, agent, LIBRARY_SEARCH);
+        var result = await consultar(biblioteca, '', '', '', agent, LIBRARY_SEARCH);
         var res = JSON.parse(result);
         res = JSON.parse(res);
         var array = res['hits']['hits'];
@@ -92,7 +94,7 @@ router.post('/', (request, response) => {
     async function searchBook(agent) {
         var book = agent.parameters.libro;
         //agent.add(book);
-        var result = await consultar(book, agent, BOOK_SEARCH);
+        var result = await consultar(book, '', '', '', agent, BOOK_SEARCH);
         var res = JSON.parse(result);
         res = JSON.parse(res);
         //console.log(res);
@@ -114,7 +116,28 @@ router.post('/', (request, response) => {
     async function searchAuthor(agent) {
         var author = agent.parameters.autor;
         //agent.add(autor);
-        var result = await consultar(author, agent, AUTHOR_SEARCH);
+        var result = await consultar(author, '', '', '', agent, AUTHOR_SEARCH);
+        var res = JSON.parse(result);
+        res = JSON.parse(res);
+        //console.log(res);
+        console.log(res);
+        var array = res['hits']['hits'];
+        if (array.length <= 0) {
+            agent.add('no se encontraron resultados de ' + author);
+        } else {
+            for (let i = 0; i < array.length; i++) {
+                if (i < 3) {
+                    const element = array[i];
+                    var book = element['_source'];
+                    addBook2Agent(book, agent);
+                }
+            }
+        }
+    }
+
+    async function searchGenre(agent) {
+        var gen = agent.parameters.genero;
+        var result = await consultar(gen, '', '', '', agent, GENRE_SEARCH);
         var res = JSON.parse(result);
         res = JSON.parse(res);
         //console.log(res);
@@ -135,8 +158,56 @@ router.post('/', (request, response) => {
 
 
     function searchCalendar(agent) {
-        agent.add('searching in calendar...');
-        //consume events biblored canlendar
+        var date = agent.parameters.fecha;
+        var dateObj = new Date(date);
+        var yearN = (dateObj.getFullYear());
+        var year = (yearN + '').length == 1 ? '0' + '' + yearN : yearN;
+        var mon = (dateObj.getMonth() + 1);
+        var month = (mon + '').length == 1 ? '0' + '' + mon : mon;
+        var dia = (dateObj.getDate());
+        var day = (dia + '').length == 1 ? '0' + '' + dia : dia;
+        var strDate = year + "-" + month + "-" + day;
+        var hour = "";
+        if (agent.parameters.hora) {
+            //console.log(hour);
+            var obj = new Date(hour);
+            //var formattedNumber = ("0" + myNumber).slice(-2);
+            var hourN = (obj.getHours() - 5);
+            var horas = (hourN + '').length == 1 ? '0' + '' + hourN : hourN;
+            var min = (obj.getMinutes());
+            var minutes = (min + '').length == 1 ? '0' + '' + min : min;
+            var sec = (obj.getSeconds());
+            var seconds = (sec + '').length == 1 ? '0' + '' + sec : sec;
+            var txtHR = ("0" + (obj.getHours() - 5)).slice(-2) + '-' + ("0" + obj.getMinutes()).slice(-2) + '-' + ("0" + obj.getSeconds()).slice(-2);
+            hour = txtHR;
+        }
+        var type = "";
+        if (agent.parameters.evento) {
+            type = agent.parameters.evento;
+        }
+        var lib = agent.parameters.biblioteca;
+
+
+        //ADD 
+        var result = await consultar(strDate, type, hour, lib, agent, CALENDAR_SEARCH);
+        var res = JSON.parse(result);
+        res = JSON.parse(res);
+        if (res['hits']) {
+            var array = res['hits']['hits'];
+            if (array.length <= 0) {
+                agent.add('no se encontraron resultados en la fecha ' + strDate);
+            } else {
+                for (let i = 0; i < array.length; i++) {
+                    if (i < 3) {
+                        const element = array[i];
+                        var event = element['_source'];
+                        addEvent2Agent(agent, event);
+                    }
+                }
+            }
+        } else {
+            agent.add('no se encontraron resultados en la fecha ' + strDate);
+        }
     }
 
     // Run the proper function handler based on the matched Dialogflow intent name
@@ -145,6 +216,7 @@ router.post('/', (request, response) => {
     intentMap.set("BuscarLibro", searchBook);
     intentMap.set("BuscarAutor", searchAuthor);
     intentMap.set("BuscarCalendario", searchCalendar);
+    intentMap.set("BuscarGenero", searchGenre);
     intentMap.set('Default Welcome Intent', welcome);
 
     intentMap.set("Horarios bibliotecas", schedules);
@@ -153,52 +225,61 @@ router.post('/', (request, response) => {
 });
 
 function addBook2Agent(book, agent) {
-    var ed, isbn, desc, aut, barcode, desc2, cat, matType, price, library, title;
-    console.log(book);
+    var ed = '',
+        isbn = '',
+        desc = '',
+        aut = '',
+        barcode = '',
+        desc2 = '',
+        cat = '',
+        matType = '',
+        price = '',
+        library = '',
+        title = '';
     if (book['Publisher']) {
         ed = '*EDITOR:* ' + book['Publisher'] + '\n';
     }
-    console.log(ed);
+    console.log(book['Publisher']);
     if (book['ISBN']) {
         isbn = '*ISBN:* ' + book['ISBN'] + '\n';
     }
-    console.log(isbn);
+    console.log(book['ISBN']);
     if (book['Description']) {
-        desc = '*DESCRIPCIÓN:* ' + book['Descripcion'] + '\n';
+        desc = '*DESCRIPCIÓN:* ' + book['Description'] + '\n';
     }
-    console.log(desc);
+    console.log(book['Description']);
     if (book['Author']) {
         aut = '*AUTOR:* ' + book['Author'] + '\n';
     }
-    console.log(aut);
+    console.log(book['Author']);
     if (book['Barcode']) {
         barcode = '*CÓDIGO DE BARRAS:* ' + book['Barcode'];
     }
-    console.log(barcode);
+    console.log(book['Barcode']);
     if (book['Desc8']) {
         desc2 = '*ADICIONAL:* ' + book['Desc8'] + '\n';
     }
-    console.log(desc2);
+    console.log(book['Desc8']);
     if (book['Sec Call No Desc']) {
         cat = '*GÉNERO:* ' + book['Sec Call No Desc'] + '\n';
     }
-    console.log(cat);
+    console.log(book['Sec Call No Desc']);
     if (book['Material Type Desc']) {
         matType = '*TIPO:* ' + book['Material Type Desc'] + '\n';
     }
-    console.log(matType);
+    console.log(book['Material Type Desc']);
     if (book['ItemPrice']) {
         price = '*PRECIO:* ' + book['ItemPrice'] + '\n';
     }
-    console.log(price);
+    console.log(book['ItemPrice']);
     if (book['Current Sub Library Desc']) {
         library = '*BIBLIOTECA:* ' + book['Current Sub Library Desc'] + '\n';
     }
-    console.log(library);
-    if (book['\\ufeffTitle']) {
-        title = '*TÍTULO:* ' + book['\\ufeffTitle'] + '\n';
+    console.log(book['Current Sub Library Desc']);
+    if (book['Titulo']) {
+        title = '*TÍTULO:* ' + book['Titulo'] + '\n';
     }
-    console.log(title);
+    console.log(book['Titulo']);
     agent.add(
         title +
         aut +
@@ -217,8 +298,8 @@ function addBook2Agent(book, agent) {
 function addQuestions(agent) {
     agent.add(new Suggestion('Buscar libro'));
     agent.add(new Suggestion('Buscar Autor'));
-    //agent.add(new Suggestion('Buscar Género'));
-    //agent.add(new Suggestion('Consulta Eventos ToM'));
+    agent.add(new Suggestion('Buscar Género'));
+    agent.add(new Suggestion('Buscar Eventos'));
 }
 
 
@@ -232,7 +313,7 @@ function generateCard(title, image, text, buttonText, buttonUrl) {
     });
 }
 
-function consultar(text, agent, type) {
+function consultar(text, event, hour, lib, agent, type) {
     console.log("Consultando...");
 
     return new Promise((resolve) => {
@@ -246,14 +327,33 @@ function consultar(text, agent, type) {
                 break;
             case BOOK_SEARCH:
                 agent.add('Buscando Libros por titulo: ' + text + '...');
-                url = ELASTIC_URL + BOOK_SEARCH_URL + 'q=\\ufeffTitle:' + text;
+                url = ELASTIC_URL + BOOK_SEARCH_URL + 'q=Titulo:' + text;
                 break;
             case GENERIC_SEARCH:
                 agent.add('Buscando Libros: ' + text + '...');
                 url = ELASTIC_URL + BOOK_SEARCH_URL + 'q:' + text;
                 break;
+            case GENRE_SEARCH:
+                agent.add('Buscando libros del género: ' + text);
+                url = ELASTIC_URL + BOOK_SEARCH_URL + 'q=Sec Call No Desc:' + text;
+                break;
             case LIBRARY_SEARCH:
                 url = ELASTIC_URL + '/bibliotecasbiblored/biblioteca/_search?q=' + text;
+                break;
+            case CALENDAR_SEARCH:
+                var sHour = '',
+                    sEvent = '';
+                if (hour != '') {
+                    sHour = '&q=hora_inicio:' + hour;
+                }
+                if (event != '') {
+                    sEvent = '&q=descripcion_larga:' + event;
+                }
+                url = ELASTIC_URL +
+                    '/calendariobiblored/_search?q=tid_biblioteca:' + lib +
+                    '&q=fecha_evento:' + text +
+                    sHour +
+                    sEvent;
                 break;
         }
 
