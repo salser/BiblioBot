@@ -48,11 +48,11 @@ router.post('/', (request, response) => {
         var x = Math.floor((Math.random() * 2) + 1);
         switch (x) {
             case 1:
-                agent.add('Hola ' /* + userName */ + ', soy blibliobot en que te puedo ayudar?');
+                agent.add('Hola' /* + userName */ + ', soy blibliobot de biblored en que te puedo ayudar?');
                 addQuestions(agent);
                 break;
             case 2:
-                agent.add('Qué hay de nuevo ' /* + userName */ + '? Soy bibliobot, alguna consulta el día de hoy?');
+                agent.add('Qué hay de nuevo ' /* + userName */ + '? Soy bibliobot de biblored, alguna consulta el día de hoy?');
                 addQuestions(agent);
                 break;
         }
@@ -157,7 +157,7 @@ router.post('/', (request, response) => {
     }
 
 
-    function searchCalendar(agent) {
+    async function searchCalendar(agent) {
         var date = agent.parameters.fecha;
         var dateObj = new Date(date);
         var yearN = (dateObj.getFullYear());
@@ -170,7 +170,7 @@ router.post('/', (request, response) => {
         var hour = "";
         if (agent.parameters.hora) {
             //console.log(hour);
-            var obj = new Date(hour);
+            var obj = new Date(agent.parameters.hora);
             //var formattedNumber = ("0" + myNumber).slice(-2);
             var hourN = (obj.getHours() - 5);
             var horas = (hourN + '').length == 1 ? '0' + '' + hourN : hourN;
@@ -180,6 +180,7 @@ router.post('/', (request, response) => {
             var seconds = (sec + '').length == 1 ? '0' + '' + sec : sec;
             var txtHR = ("0" + (obj.getHours() - 5)).slice(-2) + '-' + ("0" + obj.getMinutes()).slice(-2) + '-' + ("0" + obj.getSeconds()).slice(-2);
             hour = txtHR;
+            console.log("the hour: " + obj.toDateString());
         }
         var type = "";
         if (agent.parameters.evento) {
@@ -187,7 +188,7 @@ router.post('/', (request, response) => {
         }
         var lib = agent.parameters.biblioteca;
 
-
+	agent.add('Buscando eventos en la ' + lib + ' el día ' + strDate + '__' + hour + ' ' + type);
         //ADD 
         var result = await consultar(strDate, type, hour, lib, agent, CALENDAR_SEARCH);
         var res = JSON.parse(result);
@@ -223,6 +224,50 @@ router.post('/', (request, response) => {
 
     agent.handleRequest(intentMap);
 });
+
+function addEvent2Agent(agent, event) {
+    var desc = '',
+        date = '',
+        resume = '',
+        mision = '',
+        lib = '',
+        hour = '',
+        title = '';
+    if (event['descripcion_larga']) {
+        var replaceStr = '*DESCRIPCIÓN:* ' + event['descripcion_larga']
+            .replace(/<br>/g, '\n')
+            .replace(/<p>/g, '')
+            .replace(/<\/p>|&nbsp;/g, ' ');
+        desc = replaceStr + '\n';
+    }
+    if (event['fecha_evento']) {
+        date = '*FECHA:* ' + event['fecha_evento'] + '\n';
+    }
+    if (event['hora_inicio']) {
+        hour = '*HORA:* ' + event['hora_inicio'].replace(/-/g, ':') + '\n';
+    }
+    if (event['descripcion_corta']) {
+        resume = '*RESUMEN:* ' + event['descripcion_corta'] + '\n';
+    }
+    if (event['titulo']) {
+        title = '*TÍTULO:* ' + event['titulo'] + '\n';
+    }
+    if (event['linea_misional']) {
+        mision = '*TEMA:* ' + event['linea_misional'] + '\n';
+    }
+    if (event['nombre_biblioteca']) {
+        lib = '*BIBLIOTECA:* ' + event['nombre_biblioteca'].replace(/[0-9]/g, '').replace(/-/g, '');
+    }
+    agent.add(
+        title +
+        desc +
+        resume +
+        date +
+        hour +
+        mision +
+        lib
+    );
+}
 
 function addBook2Agent(book, agent) {
     var ed = '',
@@ -341,22 +386,22 @@ function consultar(text, event, hour, lib, agent, type) {
                 url = ELASTIC_URL + '/bibliotecasbiblored/biblioteca/_search?q=' + text;
                 break;
             case CALENDAR_SEARCH:
+		var searching = '';
                 var sHour = '',
                     sEvent = '';
+		searching += lib + ' ' + text + ' ';
                 if (hour != '') {
-                    sHour = '&q=hora_inicio:' + hour;
+                    searching += hour;
                 }
                 if (event != '') {
-                    sEvent = '&q=descripcion_larga:' + event;
+                    sEvent = '%20descripcion_larga:' + event;
                 }
                 url = ELASTIC_URL +
-                    '/calendariobiblored/_search?q=tid_biblioteca:' + lib +
-                    '&q=fecha_evento:' + text +
-                    sHour +
+                    '/calendariobiblored/_search?q=nombre_biblioteca:' + searching +
                     sEvent;
                 break;
         }
-
+        console.log(url);
         unirest.get(url)
             .send()
             .end(function(response) {
