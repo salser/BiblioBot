@@ -26,8 +26,7 @@ Robot encargado de responder preguntas de la Javeriana
 
 ### ElasticUpload
 
-Script encargado de alimentar bases de datos pertinentes
-
+Programa encargado de alimentar bases de datos pertinentes desde las fuentes
 
 ## Agradecimientos
 
