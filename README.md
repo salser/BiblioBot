@@ -22,6 +22,10 @@ Robot encargado de responder preguntas de Biblored
 
 Programa encargado de alimentar bases de datos pertinentes desde las fuentes
 
+### Insumos ElasticSearch
+
+Archivos de base de datos en formato Excel usados para alimentar los indices del motor de busqueda, pueden ser subidos en formato CSV o JSON directamente desde la herramienta Kibana o desarrollando una implementacion en codigo de ElasticUpload
+
 ## Agradecimientos
 
 * Alejandro Sierra
