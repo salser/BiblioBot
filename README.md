@@ -18,12 +18,6 @@ Esquema de codigo de cada carpeta:
 
 Robot encargado de responder preguntas de Biblored
 
-
-### PUJ
-
-Robot encargado de responder preguntas de la Javeriana
-
-
 ### ElasticUpload
 
 Programa encargado de alimentar bases de datos pertinentes desde las fuentes
